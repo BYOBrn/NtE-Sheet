@@ -1,0 +1,83 @@
+<div class="nte-sheet">
+
+  <!-- HEADER -->
+  <header class="nte-header">
+    <img class="nte-avatar" src="{{actor.img}}" title="{{actor.name}}" />
+    <div class="nte-header-fields">
+      <input class="nte-name" type="text" value="{{actor.name}}" placeholder="{{localize 'NTE.Sheet.Nome'}}" />
+      <input type="text" data-flag="concetto" value="{{flags.concetto}}" placeholder="{{localize 'NTE.Sheet.Concetto'}}" class="nte-input-field" />
+      <input type="text" data-flag="rischio" value="{{flags.rischio}}" placeholder="{{localize 'NTE.Sheet.Rischio'}}" class="nte-input-field nte-rischio" />
+    </div>
+    <button type="button" class="nte-tb-open" data-action="openTokenBag">🎒 {{localize 'NTE.Sheet.TokenBag'}}</button>
+  </header>
+
+  <!-- ALVEARE -->
+  <div class="nte-hive-section">
+    <div class="nte-hive">
+      {{#each hive as |h|}}
+      <div class="nte-hex {{h.type}} {{#if h.checked}}checked{{/if}}" style="left:{{h.left}}px;top:{{h.top}}px;">
+        <span class="nte-dot {{#if h.checked}}nte-dot-checked{{/if}}" data-ri="{{h.ri}}" data-ci="{{h.ci}}"></span>
+        <input type="text" class="nte-hex-text" data-ri="{{h.ri}}" data-ci="{{h.ci}}" value="{{h.testo}}" placeholder="{{h.label}}" />
+        <span class="nte-hex-lbl">{{h.label}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+
+  <!-- SVENTURE + STATI -->
+  <div class="nte-bottom">
+    <div class="nte-bottom-left">
+      <div class="nte-section-title">{{localize 'NTE.Sheet.Sventure'}}</div>
+      <div class="nte-sventure">
+        {{#each flags.sventure as |s idx|}}
+        <div class="nte-sventura">
+          <input type="checkbox" class="nte-sv-check" data-flag="sventure.{{idx}}.checked" {{#if s.checked}}checked{{/if}} />
+          <input type="text" class="nte-sv-text" data-flag="sventure.{{idx}}.testo" value="{{s.testo}}" placeholder="{{localize 'NTE.Sheet.Sventura' n=(nte_add idx 1)}}" />
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    <div class="nte-bottom-right">
+      <div class="nte-section-title">{{localize 'NTE.Sheet.Mente'}}</div>
+      <div class="nte-stati">
+        <div class="nte-stato confusione">
+          <div class="nte-stato-header">
+            <span>{{localize 'NTE.Sheet.Confusione'}}</span>
+            <input type="checkbox" class="nte-stato-check" data-flag="confusione.0" {{#if flags.confusione.[0]}}checked{{/if}} />
+          </div>
+        </div>
+        <div class="nte-stato adrenalina">
+          <div class="nte-stato-header">
+            <span>{{localize 'NTE.Sheet.Adrenalina'}}</span>
+            <input type="checkbox" class="nte-stato-check" data-flag="adrenalina.0" {{#if flags.adrenalina.[0]}}checked{{/if}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPUNTI & EQUIP -->
+  <div class="nte-extras">
+    <div class="nte-extra-field">
+      <label>{{localize 'NTE.Sheet.Appunti'}}</label>
+      <textarea data-flag="appunti" placeholder="{{localize 'NTE.Sheet.AppuntiPh'}}">{{flags.appunti}}</textarea>
+    </div>
+    <div class="nte-extra-field">
+      <label>{{localize 'NTE.Sheet.Equip'}}</label>
+      <textarea data-flag="equip" placeholder="{{localize 'NTE.Sheet.EquipPh'}}">{{flags.equip}}</textarea>
+    </div>
+  </div>
+
+  <!-- LEZIONI -->
+  <div class="nte-lezioni-section">
+    <div class="nte-section-title">{{localize 'NTE.Sheet.Lezioni'}}</div>
+    <div class="nte-lezioni">
+      {{#each flags.lezioni as |l idx|}}
+      <div class="nte-lezione">
+        <textarea data-flag="lezioni.{{idx}}" placeholder="{{localize 'NTE.Sheet.Lezione' n=(nte_add idx 1)}}">{{l}}</textarea>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+
+</div>

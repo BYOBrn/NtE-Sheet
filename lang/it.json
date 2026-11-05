@@ -1,0 +1,54 @@
+{
+  "NTE": {
+    "Sheet": {
+      "Label": "Not the End — Scheda Personaggio",
+      "Nome": "Nome personaggio",
+      "Concetto": "Concetto (chi sei in una frase)",
+      "Rischio": "Per cosa sono disposto a rischiare?",
+      "Abilita": "Abilità",
+      "Qualita": "Qualità",
+      "Archetipo": "Archetipo",
+      "Sventure": "Quali sventure mi affliggono?",
+      "Sventura": "Sventura {n}",
+      "Mente": "Cosa mi annebbia la mente?",
+      "Confusione": "Confusione",
+      "Adrenalina": "Adrenalina",
+      "Appunti": "Appunti",
+      "AppuntiPh": "Note di gioco...",
+      "Equip": "Equipaggiamento",
+      "EquipPh": "Oggetti, armi, risorse...",
+      "Lezioni": "Lezioni",
+      "Lezione": "Lezione {n}...",
+      "TokenBag": "Sacchetto Token"
+    },
+    "Tokens": {
+      "Speranza": "Speranza",
+      "Dolore": "Dolore",
+      "Paura": "Paura",
+      "Total": "Totale",
+      "Draw": "Estrai Token",
+      "Drawn": "Estratto: {token}",
+      "ChatDraws": "{name} estrae:"
+    },
+    "Colors": {
+      "Title": "Not the End — Colori scheda",
+      "Menu": "Personalizza colori",
+      "MenuLabel": "Apri editor colori",
+      "MenuHint": "Cambia i colori della scheda Not the End",
+      "Reset": "Ripristina default",
+      "Save": "Salva",
+      "Saved": "Not the End | Colori salvati.",
+      "Restored": "Not the End | Colori ripristinati.",
+      "HexA": "Sfondo Abilità",
+      "HexQ": "Sfondo Qualità",
+      "HexArc": "Sfondo Archetipo",
+      "StrokeA": "Bordo Abilità",
+      "StrokeQ": "Bordo Qualità",
+      "StrokeArc": "Bordo Archetipo",
+      "Bg": "Sfondo scheda",
+      "BgLight": "Sfondo header/footer",
+      "Gold": "Colore accento (oro)",
+      "Text": "Testo principale"
+    }
+  }
+}

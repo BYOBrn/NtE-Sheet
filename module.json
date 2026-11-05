@@ -1,0 +1,26 @@
+{
+  "id": "not-the-end",
+  "title": "Not the End",
+  "description": "Scheda personaggio, alveare esagonale e sacchetto token per Not the End (Fumble GDR).",
+  "version": "1.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    { "name": "B1r0n" }
+  ],
+  "esmodules": [
+    "not-the-end.js"
+  ],
+  "styles": [
+    "styles/not-the-end.css"
+  ],
+  "languages": [
+    {
+      "lang": "it",
+      "name": "Italiano",
+      "path": "lang/it.json"
+    }
+  ]
+}
