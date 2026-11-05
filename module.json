@@ -2,7 +2,7 @@
   "id": "not-the-end",
   "title": "Not the End",
   "description": "Scheda personaggio, alveare esagonale e sacchetto token per Not the End (Fumble GDR).",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -13,17 +13,11 @@
   "url": "https://github.com/BYOBrn/NtE-Sheet",
   "manifest": "https://github.com/BYOBrn/NtE-Sheet/releases/latest/download/module.json",
   "download": "https://github.com/BYOBrn/NtE-Sheet/releases/latest/download/module.zip",
+  "socket": true,
   "esmodules": [
     "not-the-end.js"
   ],
   "styles": [
     "styles/not-the-end.css"
-  ],
-  "languages": [
-    {
-      "lang": "it",
-      "name": "Italiano",
-      "path": "lang/it.json"
-    }
   ]
 }

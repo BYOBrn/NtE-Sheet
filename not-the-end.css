@@ -1,0 +1,495 @@
+/* =====================================================================
+   NOT THE END — Tema chiaro (scheda ufficiale)
+   ===================================================================== */
+
+:root {
+  --nte-bg:            #f4f0eb;
+  --nte-bg-light:      #e8e2d9;
+  --nte-bg-card:       #ede8e0;
+  --nte-border:        #c8bfb0;
+  --nte-gold:          #8a6a00;
+  --nte-text:          #1a1a1a;
+  --nte-muted:         #666666;
+  --nte-speranza:      #0077aa;
+  --nte-dolore:        #cc2200;
+  --nte-paura:         #7700aa;
+  --nte-hex-a:         #ffffff;
+  --nte-hex-q:         #d4ebd4;
+  --nte-hex-arc:       #ebd4d4;
+  --nte-hex-stroke:    #888888;
+  --nte-hex-q-stroke:  #559955;
+  --nte-hex-arc-stroke:#aa5555;
+}
+
+/* =====================================================================
+   WINDOW
+   ===================================================================== */
+.nte-sheet-window .window-content {
+  background: var(--nte-bg);
+  color: var(--nte-text);
+  padding: 0;
+  overflow-y: auto;
+  font-family: "Palatino Linotype", Palatino, serif;
+}
+
+/* =====================================================================
+   SHEET ROOT
+   ===================================================================== */
+.nte-sheet {
+  display: flex;
+  flex-direction: column;
+  color: var(--nte-text);
+  background: var(--nte-bg);
+}
+
+/* =====================================================================
+   HEADER
+   ===================================================================== */
+.nte-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--nte-bg-light);
+  border-bottom: 2px solid var(--nte-border);
+}
+
+.nte-avatar {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border: 2px solid var(--nte-border);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nte-header-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nte-name {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: var(--nte-text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--nte-border);
+  width: 100%;
+}
+
+.nte-input-field {
+  font-size: 0.9em;
+  color: var(--nte-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--nte-border);
+  width: 100%;
+  font-family: inherit;
+}
+
+.nte-rischio {
+  font-style: italic;
+}
+
+.nte-name:focus, .nte-input-field:focus {
+  outline: none;
+  border-bottom-color: var(--nte-gold);
+  color: var(--nte-text);
+}
+
+.nte-tb-open {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: var(--nte-gold);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  width: auto;
+  line-height: normal;
+}
+.nte-tb-open:hover { opacity: 0.85; }
+
+/* =====================================================================
+   ALVEARE ESAGONALE — posizioni calcolate in actor-sheet.js
+   ===================================================================== */
+.nte-hive-section {
+  padding: 16px 0 8px;
+  background: var(--nte-bg);
+  display: flex;
+  justify-content: center;
+}
+
+.nte-hive {
+  position: relative;
+  width: 560px;
+  height: 550px;
+  flex-shrink: 0;
+}
+
+/* Wrapper: clip-path + colore bordo */
+.nte-hex {
+  position: absolute;
+  width: 110px;
+  height: 126px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--nte-hex-stroke);
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+/* Interno: stessa clip-path inset di 2px per simulare bordo */
+.nte-hex::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--nte-hex-a);
+  z-index: 0;
+}
+
+.nte-hex.q   { background: var(--nte-hex-q-stroke); }
+.nte-hex.q::after   { background: var(--nte-hex-q); }
+.nte-hex.arc { background: var(--nte-hex-arc-stroke); }
+.nte-hex.arc::after { background: var(--nte-hex-arc); }
+.nte-hex.checked { opacity: 1; }
+
+/* Cerchio visivo — span cliccabile */
+.nte-dot {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #999999;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s, border-color 0.15s;
+  display: block;
+}
+.nte-dot.nte-dot-checked {
+  background: var(--nte-gold);
+  border-color: var(--nte-gold);
+}
+
+.nte-hex-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(0,0,0,0.2);
+  color: var(--nte-text);
+  font-size: 0.78em;
+  text-align: center;
+  padding: 2px;
+  font-family: inherit;
+  z-index: 2;
+}
+.nte-hex-text:focus { outline: none; border-bottom-color: var(--nte-gold); }
+.nte-hex-text::placeholder { color: rgba(0,0,0,0.22); }
+
+.nte-hex-lbl {
+  position: absolute;
+  bottom: 28px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 0.55em;
+  letter-spacing: 0.1em;
+  color: var(--nte-muted);
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.nte-hex.q   .nte-hex-lbl { color: #3a7a3a; }
+.nte-hex.arc .nte-hex-lbl { color: #aa3333; }
+
+/* =====================================================================
+   SEZIONE BASSA
+   ===================================================================== */
+.nte-bottom {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--nte-border);
+  background: var(--nte-bg-light);
+}
+
+.nte-bottom-left  { flex: 1.2; }
+.nte-bottom-right { flex: 1; }
+
+.nte-section-title {
+  font-size: 0.7em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nte-gold);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--nte-border);
+  padding-bottom: 3px;
+}
+
+/* Sventure */
+.nte-sventure { display: flex; flex-direction: column; gap: 5px; }
+
+.nte-sventura {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--nte-bg);
+  border: 1px solid var(--nte-border);
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+
+.nte-sv-check { flex-shrink: 0; width: 14px; height: 14px; accent-color: var(--nte-dolore); cursor: pointer; }
+
+.nte-sv-text {
+  flex: 1; background: transparent; border: none;
+  color: var(--nte-text); font-size: 0.85em; font-family: inherit;
+}
+.nte-sv-text:focus { outline: none; }
+.nte-sv-text::placeholder { color: var(--nte-muted); }
+
+/* Stati */
+.nte-stati { display: flex; flex-direction: column; gap: 8px; }
+
+.nte-stato {
+  background: var(--nte-bg);
+  border: 1px solid var(--nte-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+}
+.nte-stato.confusione { border-left: 3px solid var(--nte-paura); }
+.nte-stato.adrenalina { border-left: 3px solid var(--nte-dolore); }
+
+.nte-stato-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; font-size: 0.75em; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.nte-stato.confusione .nte-stato-header { color: var(--nte-paura); }
+.nte-stato.adrenalina .nte-stato-header { color: var(--nte-dolore); }
+
+.nte-stato-checks { display: flex; gap: 4px; }
+.nte-stato-check { width: 13px; height: 13px; cursor: pointer; }
+.nte-stato.confusione .nte-stato-check { accent-color: var(--nte-paura); }
+.nte-stato.adrenalina .nte-stato-check { accent-color: var(--nte-dolore); }
+
+
+
+/* =====================================================================
+   APPUNTI & EQUIP
+   ===================================================================== */
+.nte-extras {
+  display: flex; gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--nte-border);
+}
+
+.nte-extra-field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+.nte-extra-field label {
+  font-size: 0.68em; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--nte-gold);
+}
+
+.nte-extra-field textarea {
+  background: var(--nte-bg-card);
+  border: 1px solid var(--nte-border);
+  border-radius: 4px;
+  color: var(--nte-text); font-size: 0.85em;
+  padding: 6px 8px; resize: vertical; min-height: 70px; font-family: inherit;
+}
+.nte-extra-field textarea:focus { outline: none; border-color: var(--nte-gold); }
+
+/* =====================================================================
+   LEZIONI
+   ===================================================================== */
+.nte-lezioni-section {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--nte-border);
+}
+
+.nte-lezioni {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.nte-lezione textarea {
+  width: 100%;
+  background: var(--nte-bg-card);
+  border: 1px solid var(--nte-border);
+  border-radius: 4px;
+  color: var(--nte-text); font-size: 0.85em;
+  padding: 6px 8px; resize: vertical; min-height: 60px;
+  font-family: inherit; box-sizing: border-box;
+}
+.nte-lezione textarea:focus { outline: none; border-color: var(--nte-gold); }
+.nte-lezione textarea::placeholder { color: var(--nte-muted); font-style: italic; }
+
+/* =====================================================================
+   TOKEN BAG
+   ===================================================================== */
+.nte-token-bag-window .window-content {
+  background: var(--nte-bg);
+  color: var(--nte-text);
+}
+
+.nte-tokenbag { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.nte-tb-counts { display: flex; flex-direction: column; gap: 7px; }
+
+.nte-tb-count {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; background: var(--nte-bg-card);
+  border-radius: 6px; border-left: 4px solid var(--nte-border);
+}
+.nte-tb-count.speranza { border-left-color: var(--nte-speranza); }
+.nte-tb-count.dolore   { border-left-color: var(--nte-dolore); }
+.nte-tb-count.paura    { border-left-color: var(--nte-paura); }
+
+.nte-tb-label { flex: 1; font-size: 0.9em; }
+.nte-tb-count.speranza .nte-tb-label { color: var(--nte-speranza); }
+.nte-tb-count.dolore   .nte-tb-label { color: var(--nte-dolore); }
+.nte-tb-count.paura    .nte-tb-label { color: var(--nte-paura); }
+
+.nte-tb-controls { display: flex; align-items: center; gap: 8px; }
+.nte-tb-btn {
+  width: 28px; height: 28px; background: var(--nte-bg-light);
+  border: 1px solid var(--nte-border); border-radius: 4px;
+  color: var(--nte-text); cursor: pointer; font-size: 1.1em;
+  display: flex; align-items: center; justify-content: center;
+}
+.nte-tb-btn:hover { border-color: var(--nte-gold); color: var(--nte-gold); }
+.nte-tb-num { min-width: 30px; text-align: center; font-size: 1.3em; font-weight: bold; }
+
+.nte-tb-total {
+  text-align: center; font-size: 0.85em; color: var(--nte-muted);
+  border-top: 1px solid var(--nte-border); padding-top: 8px;
+}
+
+.nte-tb-draw-area { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+.nte-tb-draw-btn {
+  padding: 9px 24px; background: var(--nte-gold); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer;
+  font-size: 0.95em; font-weight: bold; letter-spacing: 0.05em;
+  transition: opacity 0.2s;
+}
+.nte-tb-draw-btn:hover:not(:disabled) { opacity: 0.85; }
+.nte-tb-draw-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.nte-tb-result { font-size: 1.1em; font-weight: bold; padding: 5px 20px; border-radius: 20px; min-height: 1.5em; }
+.nte-tb-result.speranza { color: var(--nte-speranza); }
+.nte-tb-result.dolore   { color: var(--nte-dolore); }
+.nte-tb-result.paura    { color: var(--nte-paura); }
+
+.nte-tb-total { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.nte-tb-random {
+  background: var(--nte-bg-light); border: 1px solid var(--nte-border);
+  border-radius: 4px; color: var(--nte-text); cursor: pointer;
+  font-size: 0.85em; padding: 2px 8px; width: auto; line-height: normal;
+}
+.nte-tb-random:hover { border-color: var(--nte-gold); color: var(--nte-gold); }
+.nte-tb-draw-row { display: flex; align-items: center; gap: 12px; }
+.nte-tb-draw-row label { display: flex; align-items: center; gap: 6px; font-size: 0.9em; }
+.nte-tb-qty { width: 52px; text-align: center; }
+.nte-tb-drawn { font-weight: bold; margin: 0 4px; }
+.nte-tb-drawn.speranza { color: var(--nte-speranza); }
+.nte-tb-drawn.dolore   { color: var(--nte-dolore); }
+.nte-tb-drawn.paura    { color: var(--nte-paura); }
+
+/* =====================================================================
+   CHAT
+   ===================================================================== */
+.nte-chat-draw {
+  background: var(--nte-bg-card, #ede8e0);
+  border-left: 3px solid #8a6a00;
+  padding: 6px 10px; border-radius: 4px;
+  font-family: "Palatino Linotype", serif;
+}
+.nte-chat-token { font-size: 1.1em; font-weight: bold; }
+.nte-chat-token.speranza { color: #0077aa; }
+.nte-chat-token.dolore   { color: #cc2200; }
+.nte-chat-token.paura    { color: #7700aa; }
+
+/* =====================================================================
+   DIALOG PERSONALIZZAZIONE COLORI
+   ===================================================================== */
+.nte-color-settings {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nte-color-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nte-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--nte-border, #ccc);
+}
+
+.nte-color-row label {
+  font-size: 13px;
+  flex: 1;
+}
+
+.nte-color-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nte-color-inputs input[type=color] {
+  width: 36px;
+  height: 28px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 1px;
+  cursor: pointer;
+}
+
+.nte-color-inputs input[type=text] {
+  width: 72px;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 3px 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.nte-color-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.nte-btn-primary {
+  background: var(--nte-gold, #8a6a00);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-weight: bold;
+}

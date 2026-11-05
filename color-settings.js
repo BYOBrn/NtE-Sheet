@@ -6,16 +6,16 @@
 const MODULE = "not-the-end";
 
 export const COLOR_SETTINGS = [
-  { key: "colorHexA",      name: "NTE.Colors.HexA",      default: "#ffffff" },
-  { key: "colorHexQ",      name: "NTE.Colors.HexQ",      default: "#d4ebd4" },
-  { key: "colorHexArc",    name: "NTE.Colors.HexArc",    default: "#ebd4d4" },
-  { key: "colorStrokeA",   name: "NTE.Colors.StrokeA",   default: "#888888" },
-  { key: "colorStrokeQ",   name: "NTE.Colors.StrokeQ",   default: "#559955" },
-  { key: "colorStrokeArc", name: "NTE.Colors.StrokeArc", default: "#aa5555" },
-  { key: "colorBg",        name: "NTE.Colors.Bg",        default: "#f4f0eb" },
-  { key: "colorBgLight",   name: "NTE.Colors.BgLight",   default: "#e8e2d9" },
-  { key: "colorGold",      name: "NTE.Colors.Gold",      default: "#8a6a00" },
-  { key: "colorText",      name: "NTE.Colors.Text",      default: "#1a1a1a" },
+  { key: "colorHexA",      name: "Sfondo Abilità",      default: "#ffffff" },
+  { key: "colorHexQ",      name: "Sfondo Qualità",      default: "#d4ebd4" },
+  { key: "colorHexArc",    name: "Sfondo Archetipo",    default: "#ebd4d4" },
+  { key: "colorStrokeA",   name: "Bordo Abilità",   default: "#888888" },
+  { key: "colorStrokeQ",   name: "Bordo Qualità",   default: "#559955" },
+  { key: "colorStrokeArc", name: "Bordo Archetipo", default: "#aa5555" },
+  { key: "colorBg",        name: "Sfondo scheda",        default: "#f4f0eb" },
+  { key: "colorBgLight",   name: "Sfondo header/footer",   default: "#e8e2d9" },
+  { key: "colorGold",      name: "Colore accento (oro)",      default: "#8a6a00" },
+  { key: "colorText",      name: "Testo principale",      default: "#1a1a1a" },
 ];
 
 // Setting key → variabile CSS
@@ -65,7 +65,7 @@ export class NTEColorDialog extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
     id:       "nte-color-dialog",
     classes:  ["nte-color-dialog"],
-    window:   { title: "NTE.Colors.Title", resizable: false },
+    window:   { title: "Colori scheda", resizable: false },
     position: { width: 380, height: "auto" },
   };
 
@@ -74,7 +74,7 @@ export class NTEColorDialog extends foundry.applications.api.ApplicationV2 {
       const val = game.settings.get(MODULE, s.key);
       return `
       <div class="nte-color-row">
-        <label>${game.i18n.localize(s.name)}</label>
+        <label>${s.name}</label>
         <div class="nte-color-inputs">
           <input type="color" data-key="${s.key}" value="${val}" />
           <input type="text"  data-key="${s.key}" data-text value="${val}" maxlength="7" />
@@ -86,8 +86,8 @@ export class NTEColorDialog extends foundry.applications.api.ApplicationV2 {
     <div class="nte-color-settings">
       <div class="nte-color-list">${rows}</div>
       <div class="nte-color-footer">
-        <button type="button" id="nte-color-reset">${game.i18n.localize("NTE.Colors.Reset")}</button>
-        <button type="button" id="nte-color-save" class="nte-btn-primary">${game.i18n.localize("NTE.Colors.Save")}</button>
+        <button type="button" id="nte-color-reset">Ripristina default</button>
+        <button type="button" id="nte-color-save" class="nte-btn-primary">Salva</button>
       </div>
     </div>`;
   }
@@ -124,7 +124,7 @@ export class NTEColorDialog extends foundry.applications.api.ApplicationV2 {
         const picker = el.querySelector(`input[type=color][data-key="${s.key}"]`);
         if (picker) await game.settings.set(MODULE, s.key, picker.value);
       }
-      ui.notifications.info(game.i18n.localize("NTE.Colors.Saved"));
+      ui.notifications.info("Colori salvati.");
       this.close();
     });
 
@@ -138,7 +138,7 @@ export class NTEColorDialog extends foundry.applications.api.ApplicationV2 {
         if (text)   text.value   = s.default;
         setVar(s.key, s.default);
       }
-      ui.notifications.info(game.i18n.localize("NTE.Colors.Restored"));
+      ui.notifications.info("Colori ripristinati.");
     });
   }
 
