@@ -8,11 +8,11 @@ const SOCKET = `module.${MODULE}`;
 
 // Alveare 3-4-5-4-3 = 19 esagoni ('a' abilità, 'q' qualità, 'arc' archetipo)
 const HIVE_ROWS = [
-  ["a", "q", "a"],
+  ["a", "a", "a"],
   ["a", "q", "q", "a"],
   ["a", "q", "arc", "q", "a"],
   ["a", "q", "q", "a"],
-  ["a", "q", "a"],
+  ["a", "a", "a"],
 ];
 const HIVE_LABELS = { a: "Abilità", q: "Qualità", arc: "Archetipo" };
 
@@ -25,7 +25,6 @@ function defaultFlags() {
     rischio:    "",
     appunti:    "",
     equip:      "",
-    tokens:     { speranza: 0, dolore: 0, paura: 0 },
     sventure:   Array.from({ length: 4 }, () => ({ testo: "", checked: false })),
     confusione: [false],
     adrenalina: [false],
@@ -146,27 +145,32 @@ export class NTEActorSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
 
 // ====================================================================
 // SACCHETTO TOKEN
-// Si pesca dal sacchetto mescolato; i rimanenti vengono inviati al GM
-// via socket: il messaggio di chat lo crea il client del GM.
+// 1. Inserisci token: ⚪ positivi, ⚫ negativi, ❓ casuali (max 4 per tipo)
+// 2. Prima estrazione: 1 token, poi scegli se fermarti o rischiare
+// 3. Se rischi, si estrae fino a un totale di 5 token
+// I rimanenti vengono inviati al GM via socket: il messaggio lo crea il client GM.
 // ====================================================================
 
-const TOKEN_LABELS = { speranza: "Speranza", dolore: "Dolore", paura: "Paura" };
-const TOKEN_TYPES  = Object.keys(TOKEN_LABELS);
+const SYMBOL = { pos: "⚪", neg: "⚫", rnd: "❓" };
+const NAME   = { pos: "Positivi", neg: "Negativi", rnd: "Casuali" };
+const TYPES  = ["pos", "neg", "rnd"];
+const MAX_PER_TYPE = 4;
+const RISK_TOTAL   = 5;
 const esc = s => Handlebars.Utils.escapeExpression(s);
 
-function remainingText(rem) {
-  const total = TOKEN_TYPES.reduce((n, t) => n + rem[t], 0);
-  const parts = TOKEN_TYPES.map(t => `${TOKEN_LABELS[t]} ${rem[t]}`).join(", ");
-  return `${parts} (totale ${total})`;
-}
+const symbols = list => list.map(t => SYMBOL[t]).join(" ") || "—";
+
+function countOf(list, type) { return list.filter(t => t === type).length; }
 
 /** Crea il messaggio per il GM (solo whisper ai GM). Eseguito sul client GM. */
-async function postRemainingToGM({ actorName, userName, drawn, remaining }) {
-  const estratti = drawn.length ? drawn.map(t => TOKEN_LABELS[t]).join(", ") : "nessuno";
+async function postRemainingToGM({ actorName, userName, inserted, drawn, decision, remaining }) {
+  const azione = decision === "risk" ? "ha rischiato" : "si è fermato";
+  const ins = TYPES.map(t => `${SYMBOL[t]} ${inserted[t]}`).join(", ");
+  const rest = `${SYMBOL.pos} ${countOf(remaining, "pos")}, ${SYMBOL.neg} ${countOf(remaining, "neg")} (totale ${remaining.length})`;
   await ChatMessage.create({
     whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
     speaker: { alias: "Sacchetto" },
-    content: `<div class="nte-chat-draw"><b>${esc(actorName)}</b> (${esc(userName)}) ha estratto: ${estratti}.<br>Rimasti: ${remainingText(remaining)}</div>`,
+    content: `<div class="nte-chat-draw"><b>${esc(actorName)}</b> (${esc(userName)}) ${azione}: ${symbols(drawn)}<br>Inseriti: ${ins}<br>Rimasti: ${rest}</div>`,
   });
 }
 
@@ -189,10 +193,21 @@ export class NTETokenBagApp extends ApplicationV2 {
     classes:  ["nte-token-bag-window"],
     window:   { resizable: false },
     position: { width: 360, height: "auto" },
+    actions:  {
+      adjust: NTETokenBagApp.#adjust,
+      start:  NTETokenBagApp.#start,
+      stop:   NTETokenBagApp.#stop,
+      risk:   NTETokenBagApp.#risk,
+      reset:  NTETokenBagApp.#reset,
+    },
   };
 
-  _lastDraw = [];
-  _count = 1;
+  _phase    = "setup";                       // setup | choice | done
+  _sel      = { pos: 0, neg: 0, rnd: 0 };    // token scelti dal player
+  _inserted = { pos: 0, neg: 0, rnd: 0 };
+  _bag      = [];
+  _drawn    = [];
+  _decision = null;
 
   constructor(actor, options = {}) {
     super({ id: `nte-token-bag-${actor.id}`, ...options });
@@ -201,43 +216,10 @@ export class NTETokenBagApp extends ApplicationV2 {
 
   get title() { return `Sacchetto — ${this._actor.name}`; }
 
-  _tokens() {
-    const t = this._actor.flags?.[MODULE]?.tokens ?? {};
-    return { speranza: t.speranza ?? 0, dolore: t.dolore ?? 0, paura: t.paura ?? 0 };
-  }
-
   async _renderHTML(context, options) {
-    const tk = this._tokens();
-    const total = tk.speranza + tk.dolore + tk.paura;
-    const last = this._lastDraw;
-    return `<div class="nte-tokenbag">
-      <div class="nte-tb-counts">
-        ${TOKEN_TYPES.map(tipo => `
-        <div class="nte-tb-count ${tipo}">
-          <span class="nte-tb-label">✦ ${TOKEN_LABELS[tipo]}</span>
-          <div class="nte-tb-controls">
-            <button type="button" class="nte-tb-btn" data-action="remove" data-type="${tipo}">−</button>
-            <span class="nte-tb-num">${tk[tipo]}</span>
-            <button type="button" class="nte-tb-btn" data-action="add" data-type="${tipo}">+</button>
-          </div>
-        </div>`).join("")}
-      </div>
-      <div class="nte-tb-total">
-        Totale: <strong>${total}</strong>
-        <button type="button" class="nte-tb-random">+ Casuale</button>
-      </div>
-      <div class="nte-tb-draw-area">
-        <div class="nte-tb-draw-row">
-          <label>Quanti
-            <input type="number" class="nte-tb-qty" min="1" max="${Math.max(total, 1)}" value="${Math.min(this._count, Math.max(total, 1))}" />
-          </label>
-          <button type="button" class="nte-tb-draw-btn" ${total === 0 ? "disabled" : ""}>🎲 Estrai</button>
-        </div>
-        <div class="nte-tb-result">
-          ${last.map(t => `<span class="nte-tb-drawn ${t}">✦ ${TOKEN_LABELS[t]}</span>`).join(" ")}
-        </div>
-      </div>
-    </div>`;
+    if (this._phase === "choice") return this._htmlChoice();
+    if (this._phase === "done")   return this._htmlDone();
+    return this._htmlSetup();
   }
 
   /** ApplicationV2 non ha un _replaceHTML di default. */
@@ -245,35 +227,54 @@ export class NTETokenBagApp extends ApplicationV2 {
     content.innerHTML = result;
   }
 
-  _onRender(context, options) {
-    super._onRender(context, options);
-    const el = this.element;
-    el.querySelectorAll(".nte-tb-btn").forEach(b => b.addEventListener("click", this._onAdjust.bind(this)));
-    el.querySelector(".nte-tb-random")?.addEventListener("click", this._onAddRandom.bind(this));
-    el.querySelector(".nte-tb-draw-btn")?.addEventListener("click", this._onDraw.bind(this));
-    el.querySelector(".nte-tb-qty")?.addEventListener("change", ev => {
-      this._count = Math.max(1, Number(ev.currentTarget.value) || 1);
-    });
+  _htmlSetup() {
+    const total = TYPES.reduce((n, t) => n + this._sel[t], 0);
+    const rows = TYPES.map(t => `
+      <div class="nte-tb-count ${t}">
+        <span class="nte-tb-label">${SYMBOL[t]} Token ${NAME[t]}</span>
+        <div class="nte-tb-controls">
+          <button type="button" class="nte-tb-btn" data-action="adjust" data-type="${t}" data-delta="-1" ${this._sel[t] <= 0 ? "disabled" : ""}>−</button>
+          <span class="nte-tb-num">${this._sel[t]}</span>
+          <button type="button" class="nte-tb-btn" data-action="adjust" data-type="${t}" data-delta="1" ${this._sel[t] >= MAX_PER_TYPE ? "disabled" : ""}>+</button>
+        </div>
+      </div>`).join("");
+    return `<div class="nte-tokenbag">
+      <div class="nte-tb-counts">${rows}</div>
+      <div class="nte-tb-total">Nel sacchetto: <strong>${total}</strong> (max ${MAX_PER_TYPE} per tipo)</div>
+      <div class="nte-tb-draw-area">
+        <button type="button" class="nte-tb-draw-btn" data-action="start" ${total === 0 ? "disabled" : ""}>🎲 Estrai</button>
+      </div>
+    </div>`;
   }
 
-  async _onAdjust(ev) {
-    const { type, action } = ev.currentTarget.dataset;
-    const tk = this._tokens();
-    tk[type] = action === "add" ? tk[type] + 1 : Math.max(0, tk[type] - 1);
-    await this._actor.setFlag(MODULE, "tokens", tk);
-    this.render();
+  _htmlChoice() {
+    return `<div class="nte-tokenbag">
+      <div class="nte-tb-hint">Primo token estratto:</div>
+      <div class="nte-tb-symbols">${symbols(this._drawn)}</div>
+      <div class="nte-tb-hint">Ti fermi o rischi? Rischiando si estrae fino a ${RISK_TOTAL} token in totale.</div>
+      <div class="nte-tb-draw-row">
+        <button type="button" class="nte-tb-draw-btn" data-action="stop">✋ Mi fermo</button>
+        <button type="button" class="nte-tb-draw-btn" data-action="risk">🎲 Rischio</button>
+      </div>
+    </div>`;
   }
 
-  async _onAddRandom() {
-    const tk = this._tokens();
-    tk[TOKEN_TYPES[Math.floor(Math.random() * TOKEN_TYPES.length)]]++;
-    await this._actor.setFlag(MODULE, "tokens", tk);
-    this.render();
+  _htmlDone() {
+    const pos = countOf(this._drawn, "pos"), neg = countOf(this._drawn, "neg");
+    return `<div class="nte-tokenbag">
+      <div class="nte-tb-hint">${this._decision === "risk" ? "Hai rischiato" : "Ti sei fermato"}:</div>
+      <div class="nte-tb-symbols">${symbols(this._drawn)}</div>
+      <div class="nte-tb-total">${SYMBOL.pos} ${pos} — ${SYMBOL.neg} ${neg}</div>
+      <div class="nte-tb-draw-area">
+        <button type="button" class="nte-tb-draw-btn" data-action="reset">Nuovo sacchetto</button>
+      </div>
+    </div>`;
   }
 
-  /** Costruisce il sacchetto mescolato (Fisher-Yates). */
-  _buildBag(tk) {
-    const bag = TOKEN_TYPES.flatMap(t => Array(tk[t]).fill(t));
+  /** Sacchetto mescolato (Fisher-Yates). I casuali diventano ⚪ o ⚫ a 50%. */
+  _buildBag(sel) {
+    const bag = [...Array(sel.pos).fill("pos"), ...Array(sel.neg).fill("neg")];
+    for (let i = 0; i < sel.rnd; i++) bag.push(Math.random() < 0.5 ? "pos" : "neg");
     for (let i = bag.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -281,40 +282,56 @@ export class NTETokenBagApp extends ApplicationV2 {
     return bag;
   }
 
-  async _onDraw() {
-    const qty = this.element.querySelector(".nte-tb-qty");
-    this._count = Math.max(1, Number(qty?.value) || 1);
+  async _finish(decision) {
+    this._decision = decision;
+    this._phase = "done";
 
-    const tk = this._tokens();
-    const bag = this._buildBag(tk);
-    if (!bag.length) {
-      ui.notifications.warn("Il sacchetto è vuoto.");
-      return;
-    }
-
-    const drawn = [];
-    for (let i = 0; i < this._count && bag.length; i++) drawn.push(bag.pop());
-    for (const t of drawn) tk[t] = Math.max(0, tk[t] - 1);
-
-    await this._actor.setFlag(MODULE, "tokens", tk);
-    this._lastDraw = drawn;
-
-    // Chat pubblica: cosa è stato estratto
     await ChatMessage.create({
       speaker: ChatMessage.getSpeaker({ actor: this._actor }),
-      content: `<div class="nte-chat-draw"><b>${esc(this._actor.name)}</b> estrae:<br>${
-        drawn.map(t => `<span class="nte-chat-token ${t}">✦ ${TOKEN_LABELS[t]}</span>`).join(" ")
-      }</div>`,
+      content: `<div class="nte-chat-draw"><b>${esc(this._actor.name)}</b> ${decision === "risk" ? "rischia" : "si ferma"}:<br><span class="nte-chat-token">${symbols(this._drawn)}</span></div>`,
     });
 
-    // Rimanenti: solo al GM, via socket
     sendRemainingToGM({
       actorName: this._actor.name,
       userName:  game.user.name,
-      drawn,
-      remaining: { ...tk },
+      inserted:  { ...this._inserted },
+      drawn:     [...this._drawn],
+      decision,
+      remaining: [...this._bag],
     });
 
+    this.render();
+  }
+
+  static #adjust(event, target) {
+    const { type, delta } = target.dataset;
+    this._sel[type] = Math.min(MAX_PER_TYPE, Math.max(0, this._sel[type] + Number(delta)));
+    this.render();
+  }
+
+  static async #start() {
+    this._inserted = { ...this._sel };
+    this._bag = this._buildBag(this._sel);
+    if (!this._bag.length) return;
+    this._drawn = [this._bag.pop()];
+    if (!this._bag.length) return this._finish("stop");   // niente da rischiare
+    this._phase = "choice";
+    this.render();
+  }
+
+  static async #stop() { return this._finish("stop"); }
+
+  static async #risk() {
+    while (this._drawn.length < RISK_TOTAL && this._bag.length) this._drawn.push(this._bag.pop());
+    return this._finish("risk");
+  }
+
+  static #reset() {
+    this._phase = "setup";
+    this._sel = { pos: 0, neg: 0, rnd: 0 };
+    this._bag = [];
+    this._drawn = [];
+    this._decision = null;
     this.render();
   }
 }

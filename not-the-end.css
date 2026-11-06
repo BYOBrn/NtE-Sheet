@@ -409,6 +409,14 @@
 .nte-tb-drawn.dolore   { color: var(--nte-dolore); }
 .nte-tb-drawn.paura    { color: var(--nte-paura); }
 
+.nte-tb-count.pos { border-left-color: #999999; }
+.nte-tb-count.neg { border-left-color: #000000; }
+.nte-tb-count.rnd { border-left-color: var(--nte-gold); }
+.nte-tb-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.nte-tb-hint { text-align: center; font-size: 0.9em; color: var(--nte-muted); }
+.nte-tb-symbols { text-align: center; font-size: 2em; letter-spacing: 8px; min-height: 1.4em; }
+.nte-tb-draw-row { display: flex; justify-content: center; gap: 10px; }
+
 /* =====================================================================
    CHAT
    ===================================================================== */
