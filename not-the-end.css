@@ -409,6 +409,12 @@
 .nte-tb-drawn.dolore   { color: var(--nte-dolore); }
 .nte-tb-drawn.paura    { color: var(--nte-paura); }
 
+.nte-tb-banner { display: block; width: 150px; margin: 0 auto; border-radius: 8px; }
+.nte-tb-form { display: flex; flex-direction: column; gap: 6px; }
+.nte-tb-form label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.9em; }
+.nte-tb-form input[type=number] { width: 64px; text-align: center; }
+.nte-tb-secondary { background: var(--nte-bg-light); color: var(--nte-text); border: 1px solid var(--nte-border); }
+.nte-tb-open img { height: 22px; width: 22px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
 .nte-tb-count.pos { border-left-color: #999999; }
 .nte-tb-count.neg { border-left-color: #000000; }
 .nte-tb-count.rnd { border-left-color: var(--nte-gold); }

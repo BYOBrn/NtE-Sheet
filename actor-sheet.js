@@ -144,47 +144,56 @@ export class NTEActorSheet extends HandlebarsApplicationMixin(DocumentSheetV2) {
 }
 
 // ====================================================================
-// SACCHETTO TOKEN
-// 1. Inserisci token: ⚪ positivi, ⚫ negativi, ❓ casuali (max 4 per tipo)
-// 2. Prima estrazione: 1 token, poi scegli se fermarti o rischiare
-// 3. Se rischi, si estrae fino a un totale di 5 token
-// I rimanenti vengono inviati al GM via socket: il messaggio lo crea il client GM.
+// SACCHETTO TOKEN (stessa logica della macro Token Bag)
+// 1. Aggiungi gettoni: positivi ⚪️, negativi ⚫️, casuali (50% / 50%)
+// 2. Estrai da 1 a 4 gettoni
+// 3. "Risk It": estrai altri gettoni fino a un totale di 5, oppure fermati
+// 4. I rimanenti vengono inviati solo ai GM (whisper) via socket:
+//    il messaggio lo crea il client GM, il giocatore non li vede.
+// Il sacchetto resta in memoria finché la pagina è aperta (uno per personaggio).
 // ====================================================================
 
-const SYMBOL = { pos: "⚪", neg: "⚫", rnd: "❓" };
-const NAME   = { pos: "Positivi", neg: "Negativi", rnd: "Casuali" };
-const TYPES  = ["pos", "neg", "rnd"];
-const MAX_PER_TYPE = 4;
-const RISK_TOTAL   = 5;
-const esc = s => Handlebars.Utils.escapeExpression(s);
+const POS = "⚪️";
+const NEG = "⚫️";
+const FIRST_MAX  = 4;   // massimo gettoni alla prima estrazione
+const RISK_TOTAL = 5;   // totale se si rischia
+const BAG_IMG = `modules/${MODULE}/assets/token-bag.webp`;
 
-const symbols = list => list.map(t => SYMBOL[t]).join(" ") || "—";
+const BAGS = new Map();   // actor.id → array di gettoni
+function bagOf(actor) {
+  if (!BAGS.has(actor.id)) BAGS.set(actor.id, []);
+  return BAGS.get(actor.id);
+}
 
-function countOf(list, type) { return list.filter(t => t === type).length; }
+function shuffle(bag) {
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bag[i], bag[j]] = [bag[j], bag[i]];
+  }
+}
 
-/** Crea il messaggio per il GM (solo whisper ai GM). Eseguito sul client GM. */
-async function postRemainingToGM({ actorName, userName, inserted, drawn, decision, remaining }) {
-  const azione = decision === "risk" ? "ha rischiato" : "si è fermato";
-  const ins = TYPES.map(t => `${SYMBOL[t]} ${inserted[t]}`).join(", ");
-  const rest = `${SYMBOL.pos} ${countOf(remaining, "pos")}, ${SYMBOL.neg} ${countOf(remaining, "neg")} (totale ${remaining.length})`;
-  await ChatMessage.create({
-    whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
-    speaker: { alias: "Sacchetto" },
-    content: `<div class="nte-chat-draw"><b>${esc(actorName)}</b> (${esc(userName)}) ${azione}: ${symbols(drawn)}<br>Inseriti: ${ins}<br>Rimasti: ${rest}</div>`,
-  });
+// --- Invio ai GM: il messaggio viene creato dal client GM scelto ---
+function sendRemainingTokensToGM(bag, actorName) {
+  const content = `${actorName} — gettoni rimanenti nel sacchetto: ${bag.join(", ") || "— (vuoto) —"}`;
+
+  // Un solo GM pubblica il messaggio (per evitare duplicati)
+  const activeGM = game.users.find(u => u.active && u.isGM) ?? game.users.find(u => u.isGM);
+  if (!activeGM) return ui.notifications.warn("Nessun GM online: impossibile inviare il riepilogo.");
+
+  const gmIDs = game.users.filter(u => u.isGM).map(u => u.id);
+  if (game.user.id === activeGM.id) {
+    return ChatMessage.create({ content, whisper: gmIDs, speaker: { alias: "Sacchetto" } });
+  }
+  game.socket.emit(SOCKET, { action: "post-remaining", content, targetGmId: activeGM.id });
 }
 
 export function registerTokenBagSocket() {
-  game.socket.on(SOCKET, async data => {
-    if (data?.type !== "tokenBagRemaining") return;
-    if (game.user !== game.users.activeGM) return;   // risponde un solo GM
-    await postRemainingToGM(data);
+  game.socket.on(SOCKET, data => {
+    if (data?.action !== "post-remaining") return;
+    if (!game.user.isGM || game.user.id !== data.targetGmId) return;
+    const gmIDs = game.users.filter(u => u.isGM).map(u => u.id);
+    ChatMessage.create({ content: data.content, whisper: gmIDs, speaker: { alias: "Sacchetto" } });
   });
-}
-
-function sendRemainingToGM(data) {
-  if (game.user.isGM) return postRemainingToGM(data);
-  game.socket.emit(SOCKET, { type: "tokenBagRemaining", ...data });
 }
 
 export class NTETokenBagApp extends ApplicationV2 {
@@ -192,22 +201,20 @@ export class NTETokenBagApp extends ApplicationV2 {
   static DEFAULT_OPTIONS = {
     classes:  ["nte-token-bag-window"],
     window:   { resizable: false },
-    position: { width: 360, height: "auto" },
+    position: { width: 380, height: "auto" },
     actions:  {
-      adjust: NTETokenBagApp.#adjust,
-      start:  NTETokenBagApp.#start,
-      stop:   NTETokenBagApp.#stop,
-      risk:   NTETokenBagApp.#risk,
-      reset:  NTETokenBagApp.#reset,
+      add:     NTETokenBagApp.#add,
+      extract: NTETokenBagApp.#extract,
+      skip:    NTETokenBagApp.#skip,
+      riskYes: NTETokenBagApp.#riskYes,
+      riskNo:  NTETokenBagApp.#riskNo,
+      clear:   NTETokenBagApp.#clear,
     },
   };
 
-  _phase    = "setup";                       // setup | choice | done
-  _sel      = { pos: 0, neg: 0, rnd: 0 };    // token scelti dal player
-  _inserted = { pos: 0, neg: 0, rnd: 0 };
-  _bag      = [];
-  _drawn    = [];
-  _decision = null;
+  _phase = "add";    // add | extract | risk
+  _drawn = [];
+  _last  = "";
 
   constructor(actor, options = {}) {
     super({ id: `nte-token-bag-${actor.id}`, ...options });
@@ -215,11 +222,18 @@ export class NTETokenBagApp extends ApplicationV2 {
   }
 
   get title() { return `Sacchetto — ${this._actor.name}`; }
+  get _bag()  { return bagOf(this._actor); }
 
+  // ---------- Rendering ----------
   async _renderHTML(context, options) {
-    if (this._phase === "choice") return this._htmlChoice();
-    if (this._phase === "done")   return this._htmlDone();
-    return this._htmlSetup();
+    let body;
+    if (this._phase === "extract")   body = this._htmlExtract();
+    else if (this._phase === "risk") body = this._htmlRisk();
+    else                             body = this._htmlAdd();
+    return `<div class="nte-tokenbag">
+      <img class="nte-tb-banner" src="${BAG_IMG}" alt="Sacchetto" />
+      ${body}
+    </div>`;
   }
 
   /** ApplicationV2 non ha un _replaceHTML di default. */
@@ -227,111 +241,136 @@ export class NTETokenBagApp extends ApplicationV2 {
     content.innerHTML = result;
   }
 
-  _htmlSetup() {
-    const total = TYPES.reduce((n, t) => n + this._sel[t], 0);
-    const rows = TYPES.map(t => `
-      <div class="nte-tb-count ${t}">
-        <span class="nte-tb-label">${SYMBOL[t]} Token ${NAME[t]}</span>
-        <div class="nte-tb-controls">
-          <button type="button" class="nte-tb-btn" data-action="adjust" data-type="${t}" data-delta="-1" ${this._sel[t] <= 0 ? "disabled" : ""}>−</button>
-          <span class="nte-tb-num">${this._sel[t]}</span>
-          <button type="button" class="nte-tb-btn" data-action="adjust" data-type="${t}" data-delta="1" ${this._sel[t] >= MAX_PER_TYPE ? "disabled" : ""}>+</button>
-        </div>
-      </div>`).join("");
-    return `<div class="nte-tokenbag">
-      <div class="nte-tb-counts">${rows}</div>
-      <div class="nte-tb-total">Nel sacchetto: <strong>${total}</strong> (max ${MAX_PER_TYPE} per tipo)</div>
-      <div class="nte-tb-draw-area">
-        <button type="button" class="nte-tb-draw-btn" data-action="start" ${total === 0 ? "disabled" : ""}>🎲 Estrai</button>
+  _htmlAdd() {
+    return `
+      <div class="nte-tb-hint">Aggiungi gettoni al sacchetto</div>
+      <div class="nte-tb-form">
+        <label>Gettoni Positivi (${POS}) <input type="number" name="posTokens" value="0" min="0" /></label>
+        <label>Gettoni Negativi (${NEG}) <input type="number" name="negTokens" value="0" min="0" /></label>
+        <label>Gettoni Casuali (❓) <input type="number" name="randomTokens" value="0" min="0" /></label>
       </div>
-    </div>`;
-  }
-
-  _htmlChoice() {
-    return `<div class="nte-tokenbag">
-      <div class="nte-tb-hint">Primo token estratto:</div>
-      <div class="nte-tb-symbols">${symbols(this._drawn)}</div>
-      <div class="nte-tb-hint">Ti fermi o rischi? Rischiando si estrae fino a ${RISK_TOTAL} token in totale.</div>
+      ${this._last ? `<div class="nte-tb-hint">Ultimo risultato: ${this._last}</div>` : ""}
       <div class="nte-tb-draw-row">
-        <button type="button" class="nte-tb-draw-btn" data-action="stop">✋ Mi fermo</button>
-        <button type="button" class="nte-tb-draw-btn" data-action="risk">🎲 Rischio</button>
-      </div>
-    </div>`;
+        <button type="button" class="nte-tb-draw-btn" data-action="add">Aggiungi</button>
+        <button type="button" class="nte-tb-draw-btn nte-tb-secondary" data-action="clear">Svuota</button>
+      </div>`;
   }
 
-  _htmlDone() {
-    const pos = countOf(this._drawn, "pos"), neg = countOf(this._drawn, "neg");
-    return `<div class="nte-tokenbag">
-      <div class="nte-tb-hint">${this._decision === "risk" ? "Hai rischiato" : "Ti sei fermato"}:</div>
-      <div class="nte-tb-symbols">${symbols(this._drawn)}</div>
-      <div class="nte-tb-total">${SYMBOL.pos} ${pos} — ${SYMBOL.neg} ${neg}</div>
-      <div class="nte-tb-draw-area">
-        <button type="button" class="nte-tb-draw-btn" data-action="reset">Nuovo sacchetto</button>
+  _htmlExtract() {
+    return `
+      <div class="nte-tb-hint">Estrai gettoni dal sacchetto</div>
+      <div class="nte-tb-form">
+        <label>Quanti gettoni estrarre? (max ${FIRST_MAX})
+          <input type="number" name="numTokens" value="1" min="1" max="${FIRST_MAX}" />
+        </label>
       </div>
-    </div>`;
+      <div class="nte-tb-draw-row">
+        <button type="button" class="nte-tb-draw-btn" data-action="extract">Estrai</button>
+        <button type="button" class="nte-tb-draw-btn nte-tb-secondary" data-action="skip">Annulla</button>
+      </div>`;
   }
 
-  /** Sacchetto mescolato (Fisher-Yates). I casuali diventano ⚪ o ⚫ a 50%. */
-  _buildBag(sel) {
-    const bag = [...Array(sel.pos).fill("pos"), ...Array(sel.neg).fill("neg")];
-    for (let i = 0; i < sel.rnd; i++) bag.push(Math.random() < 0.5 ? "pos" : "neg");
-    for (let i = bag.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [bag[i], bag[j]] = [bag[j], bag[i]];
+  _htmlRisk() {
+    return `
+      <div class="nte-tb-hint">Risk It</div>
+      <div class="nte-tb-hint">Hai estratto ${this._drawn.length} gettoni finora:</div>
+      <div class="nte-tb-symbols">${this._drawn.join(" ")}</div>
+      <div class="nte-tb-hint">Vuoi rischiare ed estrarre altri gettoni fino ad arrivare a un totale di ${RISK_TOTAL}?</div>
+      <div class="nte-tb-draw-row">
+        <button type="button" class="nte-tb-draw-btn" data-action="riskYes">Sì, rischio</button>
+        <button type="button" class="nte-tb-draw-btn nte-tb-secondary" data-action="riskNo">No, mi fermo qui</button>
+      </div>`;
+  }
+
+  // ---------- Logica ----------
+  _say(content) {
+    return ChatMessage.create({ speaker: ChatMessage.getSpeaker({ actor: this._actor }), content });
+  }
+
+  _addTokens(pos, neg, rnd) {
+    const bag = this._bag;
+    for (let i = 0; i < pos; i++) bag.push(POS);
+    for (let i = 0; i < neg; i++) bag.push(NEG);
+    for (let i = 0; i < rnd; i++) bag.push(Math.random() < 0.5 ? POS : NEG);
+    shuffle(bag);
+  }
+
+  async _pull(n) {
+    const bag = this._bag;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      if (!bag.length) {
+        await this._say("Il sacchetto è vuoto: impossibile estrarre altri gettoni.");
+        break;
+      }
+      out.push(bag.pop());   // il sacchetto è già mescolato
     }
-    return bag;
+    return out;
   }
 
-  async _finish(decision) {
-    this._decision = decision;
-    this._phase = "done";
-
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker({ actor: this._actor }),
-      content: `<div class="nte-chat-draw"><b>${esc(this._actor.name)}</b> ${decision === "risk" ? "rischia" : "si ferma"}:<br><span class="nte-chat-token">${symbols(this._drawn)}</span></div>`,
-    });
-
-    sendRemainingToGM({
-      actorName: this._actor.name,
-      userName:  game.user.name,
-      inserted:  { ...this._inserted },
-      drawn:     [...this._drawn],
-      decision,
-      remaining: [...this._bag],
-    });
-
-    this.render();
-  }
-
-  static #adjust(event, target) {
-    const { type, delta } = target.dataset;
-    this._sel[type] = Math.min(MAX_PER_TYPE, Math.max(0, this._sel[type] + Number(delta)));
-    this.render();
-  }
-
-  static async #start() {
-    this._inserted = { ...this._sel };
-    this._bag = this._buildBag(this._sel);
-    if (!this._bag.length) return;
-    this._drawn = [this._bag.pop()];
-    if (!this._bag.length) return this._finish("stop");   // niente da rischiare
-    this._phase = "choice";
-    this.render();
-  }
-
-  static async #stop() { return this._finish("stop"); }
-
-  static async #risk() {
-    while (this._drawn.length < RISK_TOTAL && this._bag.length) this._drawn.push(this._bag.pop());
-    return this._finish("risk");
-  }
-
-  static #reset() {
-    this._phase = "setup";
-    this._sel = { pos: 0, neg: 0, rnd: 0 };
-    this._bag = [];
+  /** Fine processo: invia i rimanenti ai GM e torna alla schermata iniziale. */
+  _finish(lastText = "") {
+    this._last = lastText;
     this._drawn = [];
-    this._decision = null;
+    this._phase = "add";
+    sendRemainingTokensToGM(this._bag, this._actor.name);
+    this.render();
+  }
+
+  _num(name) {
+    return parseInt(this.element.querySelector(`[name="${name}"]`)?.value, 10);
+  }
+
+  // ---------- Azioni ----------
+  static async #add() {
+    const [pos, neg, rnd] = ["posTokens", "negTokens", "randomTokens"].map(n => this._num(n));
+    if (![pos, neg, rnd].every(n => Number.isInteger(n) && n >= 0)) {
+      return ui.notifications.warn("Input non valido: inserisci numeri ≥ 0.");
+    }
+    this._addTokens(pos, neg, rnd);
+    await this._say("Gettoni aggiunti al sacchetto.");
+    this._phase = "extract";
+    this.render();
+  }
+
+  static async #extract() {
+    const n = this._num("numTokens");
+    if (!Number.isInteger(n) || n < 1 || n > FIRST_MAX) {
+      return ui.notifications.warn(`Inserisci un numero di gettoni da 1 a ${FIRST_MAX}.`);
+    }
+    const out = await this._pull(n);
+    if (!out.length) {
+      await this._say("Nessun gettone estratto.");
+      return this._finish();
+    }
+    this._drawn = out;
+    await this._say(`Gettoni estratti: ${out.join(", ")}`);
+    this._phase = "risk";
+    this.render();
+  }
+
+  /** Annulla l'estrazione: invia comunque lo stato residuo. */
+  static #skip() { this._finish(); }
+
+  static async #riskYes() {
+    const needed = Math.max(0, RISK_TOTAL - this._drawn.length);
+    const more = await this._pull(needed);
+    const all = this._drawn.concat(more);
+    await this._say(more.length < needed
+      ? `Il sacchetto non aveva abbastanza gettoni. Totale ora: ${all.join(", ")}`
+      : `Gettoni totali (${RISK_TOTAL}): ${all.join(", ")}`);
+    this._finish(all.join(" "));
+  }
+
+  static async #riskNo() {
+    await this._say(`Ti fermi con ${this._drawn.length} gettoni: ${this._drawn.join(", ")}`);
+    this._finish(this._drawn.join(" "));
+  }
+
+  static #clear() {
+    this._bag.length = 0;
+    this._last = "";
+    ui.notifications.info("Sacchetto svuotato.");
     this.render();
   }
 }

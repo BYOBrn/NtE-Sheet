@@ -2,7 +2,7 @@
   "id": "not-the-end",
   "title": "Not the End",
   "description": "Scheda personaggio, alveare esagonale e sacchetto token per Not the End (Fumble GDR).",
-  "version": "1.3.1",
+  "version": "1.4.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
